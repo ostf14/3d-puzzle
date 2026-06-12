@@ -249,7 +249,7 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
         style={{
           ...floatingButtonStyle,
           position: 'fixed',
-          bottom: '24px',
+          top: '24px',
           right: '24px',
           zIndex: 1000,
         }}
