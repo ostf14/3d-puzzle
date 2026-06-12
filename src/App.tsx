@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import Scene from './Scene'
@@ -19,6 +19,10 @@ function App() {
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  // Latch so the success popup opens exactly once per session. Without it the
+  // 100ms poll re-opens it on the next tick after the user dismisses it,
+  // because window.isPuzzleComplete stays true.
+  const successShownRef = useRef(false)
 
   // Poll for undo/redo availability and puzzle completion
   useEffect(() => {
@@ -29,13 +33,14 @@ function App() {
       if ((window as any).canRedo) {
         setCanRedo((window as any).canRedo())
       }
-      if ((window as any).isPuzzleComplete && !showSuccess) {
+      if ((window as any).isPuzzleComplete && !successShownRef.current) {
+        successShownRef.current = true
         setShowSuccess(true)
       }
     }, 100)
 
     return () => clearInterval(interval)
-  }, [showSuccess])
+  }, [])
 
   const handleUndo = () => {
     if ((window as any).puzzleUndo) {

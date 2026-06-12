@@ -4,102 +4,119 @@ interface SuccessPopupProps {
   onClose: () => void
 }
 
+const CLOSE_DEFAULT_SHADOW = 'inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.05)'
+const CLOSE_PRESSED_SHADOW = 'inset 0 3px 6px rgba(0,0,0,0.6)'
+
 const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose }) => {
   return (
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 2000,
-      animation: 'fadeIn 0.3s ease-in'
+      animation: 'spFadeIn 0.3s ease-in',
     }}>
       <div style={{
-        backgroundColor: 'white',
-        borderRadius: '20px',
-        padding: '40px',
-        maxWidth: '500px',
+        position: 'relative',
+        background: 'rgba(20, 20, 20, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderRadius: '28px',
+        padding: '56px 56px 48px',
+        maxWidth: '520px',
+        width: 'calc(100vw - 48px)',
         textAlign: 'center',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-        animation: 'slideUp 0.4s ease-out'
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        animation: 'spSlideUp 0.4s ease-out',
+        color: 'white',
       }}>
-        {/* Green Checkmark */}
-        <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          backgroundColor: '#4CAF50',
-          margin: '0 auto 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          animation: 'scaleIn 0.5s ease-out'
-        }}>
-          <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </div>
+        {/* Close button — same idiom as dock buttons */}
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            boxShadow: CLOSE_DEFAULT_SHADOW,
+            color: 'rgba(255,255,255,0.75)',
+            fontSize: '22px',
+            fontWeight: 300,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            outline: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            padding: 0,
+            lineHeight: 1,
+            userSelect: 'none',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.14)'
+            e.currentTarget.style.transform = 'scale(1.05)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+            e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.boxShadow = CLOSE_DEFAULT_SHADOW
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.boxShadow = CLOSE_PRESSED_SHADOW
+            e.currentTarget.style.transform = 'scale(0.95)'
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.boxShadow = CLOSE_DEFAULT_SHADOW
+            e.currentTarget.style.transform = 'scale(1.05)'
+          }}
+        >
+          ×
+        </button>
 
         {/* Title */}
         <h1 style={{
-          fontSize: '32px',
-          fontWeight: 'bold',
-          color: '#333',
-          margin: '0 0 10px 0'
+          fontFamily: '"Iowan Old Style", "Apple Garamond", Baskerville, "Times New Roman", Georgia, serif',
+          fontSize: '36px',
+          fontWeight: 400,
+          fontStyle: 'italic',
+          letterSpacing: '0.02em',
+          color: 'rgba(255, 255, 255, 0.95)',
+          margin: '0 0 28px 0',
+          lineHeight: 1.1,
         }}>
           Asklepios
         </h1>
 
         {/* Description */}
         <p style={{
-          fontSize: '16px',
-          color: '#666',
-          lineHeight: '1.6',
-          margin: '0 0 30px 0'
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontSize: '14px',
+          fontWeight: 300,
+          color: 'rgba(255, 255, 255, 0.6)',
+          lineHeight: 1.7,
+          margin: 0,
+          letterSpacing: '0.01em',
         }}>
           Statue of Asclepius in the park of Schönbrunn Palace. He is depicted as an old, bearded man, supported by a stick wrapped by a snake, which is considered to be the tree of life. The snake symbolises both wisdom and renewal. In Greek and Roman mythology, Asclepius is the god of healing.
         </p>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{
-            padding: '12px 40px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#45a049'
-            e.currentTarget.style.transform = 'translateY(-2px)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#4CAF50'
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          Continue
-        </button>
       </div>
 
       <style>{`
-        @keyframes fadeIn {
+        @keyframes spFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        
-        @keyframes slideUp {
+        @keyframes spSlideUp {
           from {
             opacity: 0;
             transform: translateY(30px);
@@ -107,18 +124,6 @@ const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose }) => {
           to {
             opacity: 1;
             transform: translateY(0);
-          }
-        }
-        
-        @keyframes scaleIn {
-          0% {
-            transform: scale(0);
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
           }
         }
       `}</style>
