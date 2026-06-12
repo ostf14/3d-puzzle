@@ -5,13 +5,14 @@ import * as THREE from 'three'
 import { orbitControlsRef } from './App'
 
 // How many fragments are actually rendered on screen, picked as the largest
-// pieces by bbox volume. Anything below the cutoff stays hidden.
-const VISIBLE_FRAGMENT_COUNT = 13
+// pieces by bbox volume. Anything below the cutoff stays hidden — this
+// drops the two ~0.001-volume "specks" that were impossible to track.
+const VISIBLE_FRAGMENT_COUNT = 11
 
 // How many snapped pieces declare the puzzle solved. Equal to VISIBLE means
 // every piece must be placed — set lower if you want to allow a piece to be
 // ignored.
-const REQUIRED_SNAP_COUNT = 13
+const REQUIRED_SNAP_COUNT = 11
 
 // Radius of the scramble sphere — pieces are scattered on this surface.
 const SCRAMBLE_RADIUS = 5
