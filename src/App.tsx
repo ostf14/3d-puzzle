@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import Scene from './Scene'
 import PuzzleUI from './PuzzleUI'
 import SuccessPopup from './SuccessPopup'
+import LoadingOverlay from './LoadingOverlay'
 // import ModelSelector from './ModelSelector' // re-enable when restoring the selector flow
 import * as THREE from 'three'
 
@@ -59,39 +60,41 @@ function App() {
         canRedo={canRedo}
       />
       
-      <Canvas
-        camera={{ position: [0, 0, 10], fov: 50 }}
-        dpr={[1, 2]} // Clamp pixel ratio for mobile performance
-        gl={{ antialias: true }}
-        style={{ width: '100%', height: '100%', background: '#000000' }}
-      >
-        {/* Lighting */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-        
-        {/* Scene with puzzle logic */}
-        <Scene modelPath={selectedModel} />
-        
-        {/* Camera controls - right mouse button only, 2+ fingers for touch */}
-        <OrbitControls 
-          ref={(ref) => { orbitControlsRef.current = ref }}
-          enablePan={false}
-          enableZoom={true}
-          enableRotate={true}
-          mouseButtons={{
-            LEFT: THREE.MOUSE.PAN,
-            MIDDLE: THREE.MOUSE.DOLLY,
-            RIGHT: THREE.MOUSE.ROTATE
-          }}
-          touches={{
-            ONE: THREE.TOUCH.PAN, // Will be overridden by our custom handler
-            TWO: THREE.TOUCH.DOLLY_ROTATE
-          }}
-          minDistance={5}
-          maxDistance={20}
-          target={[0, 0, 0]}
-        />
-      </Canvas>
+      <Suspense fallback={<LoadingOverlay />}>
+        <Canvas
+          camera={{ position: [0, 0, 10], fov: 50 }}
+          dpr={[1, 2]} // Clamp pixel ratio for mobile performance
+          gl={{ antialias: true }}
+          style={{ width: '100%', height: '100%', background: '#000000' }}
+        >
+          {/* Lighting */}
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[10, 10, 5]} intensity={1} />
+
+          {/* Scene with puzzle logic */}
+          <Scene modelPath={selectedModel} />
+
+          {/* Camera controls - right mouse button only, 2+ fingers for touch */}
+          <OrbitControls
+            ref={(ref) => { orbitControlsRef.current = ref }}
+            enablePan={false}
+            enableZoom={true}
+            enableRotate={true}
+            mouseButtons={{
+              LEFT: THREE.MOUSE.PAN,
+              MIDDLE: THREE.MOUSE.DOLLY,
+              RIGHT: THREE.MOUSE.ROTATE
+            }}
+            touches={{
+              ONE: THREE.TOUCH.PAN, // Will be overridden by our custom handler
+              TWO: THREE.TOUCH.DOLLY_ROTATE
+            }}
+            minDistance={5}
+            maxDistance={20}
+            target={[0, 0, 0]}
+          />
+        </Canvas>
+      </Suspense>
     </div>
   )
 }
