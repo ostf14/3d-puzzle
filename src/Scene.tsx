@@ -192,31 +192,21 @@ function Scene({ modelPath }: SceneProps) {
       console.log(`Group ${id}: members=${Array.from(group.members).join(', ')}`)
     })
 
-    // Treat the largest group as the "main assembly" — that one stays put.
-    // Everything else (singles AND any smaller orphan groups) is considered
-    // stray, gets highlighted, and is pulled back onto a fresh Fibonacci
-    // sphere. Orphan groups are dismantled in the process so their pieces
-    // become individually draggable again.
-    let mainGroupId: string | null = null
-    let mainSize = 0
-    groups.forEach((g, id) => {
-      if (g.members.size > mainSize) {
-        mainSize = g.members.size
-        mainGroupId = id
-      }
-    })
-
-    const strayNames: string[] = []
-    const orphanGroupIds = new Set<string>()
+    // Search only rescues SINGLES — pieces that have no group at all. Any
+    // existing group (large main assembly, small accidental orphan pair,
+    // etc.) is left alone so we never rip apart something the player
+    // deliberately snapped together. Orphan groups still glow via the halo
+    // effect below so the player can find them and dismantle them by hand
+    // if they want.
+    const singles: string[] = []
     fragments.forEach((frag, name) => {
       if (!frag.isActive) return
-      if (frag.groupId && frag.groupId === mainGroupId) return // in main assembly
-      strayNames.push(name)
-      if (frag.groupId) orphanGroupIds.add(frag.groupId)
+      if (frag.groupId) return
+      singles.push(name)
     })
 
-    if (strayNames.length > 0) {
-      const fibPoints = fibonacciSpherePoints(strayNames.length, SCRAMBLE_RADIUS)
+    if (singles.length > 0) {
+      const fibPoints = fibonacciSpherePoints(singles.length, SCRAMBLE_RADIUS)
       const rotMat = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
         Math.random() * Math.PI * 2,
         Math.random() * Math.PI * 2,
@@ -229,21 +219,14 @@ function Scene({ modelPath }: SceneProps) {
       }
 
       const newFragments = new Map(fragments)
-      const newGroups = new Map(groups)
-      strayNames.forEach((name, i) => {
+      singles.forEach((name, i) => {
         const f = newFragments.get(name)!
         f.targetPosition.copy(fibPoints[i])
         // lerpProgress=0 hands control to the existing useFrame lerp which
         // animates currentPosition → targetPosition over ~0.3 s.
         f.lerpProgress = 0
-        // Break the piece out of any orphan group so it counts as unsnapped
-        // again and can be re-assembled cleanly.
-        f.groupId = null
-        f.isSnapped = false
       })
-      orphanGroupIds.forEach(id => newGroups.delete(id))
       setFragments(newFragments)
-      setGroups(newGroups)
     }
 
     setHighlightActive(true)
