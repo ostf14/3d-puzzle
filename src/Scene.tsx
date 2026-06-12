@@ -806,11 +806,11 @@ function Scene({ modelPath }: SceneProps) {
     const particles: Array<{ pos: THREE.Vector3; vel: THREE.Vector3; life: number; maxLife: number }> = []
 
     for (let i = 0; i < particleCount; i++) {
-      // Spawn close to the seam with a small random offset
+      // Spawn over a wide cloud around the seam — not a tight clump.
       const p = new THREE.Vector3(
-        position.x + (Math.random() - 0.5) * 0.12,
-        position.y + (Math.random() - 0.5) * 0.05,
-        position.z + (Math.random() - 0.5) * 0.12,
+        position.x + (Math.random() - 0.5) * 0.45,
+        position.y + (Math.random() - 0.5) * 0.15,
+        position.z + (Math.random() - 0.5) * 0.45,
       )
       positions[i * 3]     = p.x
       positions[i * 3 + 1] = p.y
@@ -825,12 +825,14 @@ function Scene({ modelPath }: SceneProps) {
       particles.push({
         pos: p,
         vel: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.35,
-          0.05 + Math.random() * 0.25,          // gentle upward kick
-          (Math.random() - 0.5) * 0.35,
+          // Tiny drift — each grain gets a sustained sideways motion that
+          // persists thanks to the low drag in useFrame.
+          (Math.random() - 0.5) * 0.08,
+          -0.02 + Math.random() * 0.06,
+          (Math.random() - 0.5) * 0.08,
         ),
         life: 1,
-        maxLife: 1.2 + Math.random() * 0.9,     // total lifetime 1.2 .. 2.1 s
+        maxLife: 2.5 + Math.random() * 1.8,     // 2.5 .. 4.3 s — visible glide
       })
     }
 
@@ -1015,8 +1017,8 @@ function Scene({ modelPath }: SceneProps) {
   useFrame((_state: any, delta: any) => {
     const bursts = dustBurstsRef.current
     if (bursts.length === 0) return
-    const GRAVITY = 1.8     // world-Y pull per second²
-    const DRAG = 0.97       // velocity multiplier per frame
+    const GRAVITY = 0.3     // gentle world-Y pull — sand floats, doesn't plummet
+    const DRAG = 0.99       // very low — lets each grain's initial drift persist
     for (let bi = bursts.length - 1; bi >= 0; bi--) {
       const burst = bursts[bi]
       const posAttr = burst.points.geometry.getAttribute('position') as THREE.BufferAttribute
