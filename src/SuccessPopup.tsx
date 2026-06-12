@@ -83,31 +83,32 @@ const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose }) => {
           ×
         </button>
 
-        {/* Title */}
+        {/* Title — same Doto + white glow treatment as the progress counter. */}
         <h1 style={{
-          fontFamily: '"Iowan Old Style", "Apple Garamond", Baskerville, "Times New Roman", Georgia, serif',
-          fontSize: '36px',
-          fontWeight: 400,
-          fontStyle: 'italic',
-          letterSpacing: '0.02em',
-          color: 'rgba(255, 255, 255, 0.95)',
-          margin: '0 0 20px 0',
+          fontFamily: '"Doto", sans-serif',
+          fontSize: '40px',
+          fontWeight: 700,
+          color: 'white',
+          margin: '0 0 24px 0',
           lineHeight: 1.1,
+          textShadow: '0 0 8px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.3)',
         }}>
           Puzzle Complete!
         </h1>
 
-        {/* Congratulatory message — statue details live in the InfoPanel now. */}
+        {/* Congratulatory subtitle — same uppercase letter-spaced sans
+            as the About-the-item tab, treated as a museum-style caption. */}
         <p style={{
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          fontSize: '15px',
-          fontWeight: 300,
-          color: 'rgba(255, 255, 255, 0.7)',
-          lineHeight: 1.6,
+          fontSize: '12px',
+          fontWeight: 400,
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+          color: 'rgba(255, 255, 255, 0.5)',
+          lineHeight: 1.7,
           margin: 0,
-          letterSpacing: '0.01em',
         }}>
-          You&rsquo;ve successfully reassembled the sculpture.
+          You&rsquo;ve successfully reassembled the sculpture
         </p>
       </div>
 
