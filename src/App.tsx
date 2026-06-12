@@ -5,6 +5,7 @@ import Scene from './Scene'
 import PuzzleUI from './PuzzleUI'
 import SuccessPopup from './SuccessPopup'
 import LoadingOverlay from './LoadingOverlay'
+import InfoPanel from './InfoPanel'
 // import ModelSelector from './ModelSelector' // re-enable when restoring the selector flow
 import * as THREE from 'three'
 
@@ -72,6 +73,8 @@ function App() {
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       {showSuccess && <SuccessPopup onClose={() => setShowSuccess(false)} />}
+
+      <InfoPanel />
 
       <PuzzleUI
         onUndo={handleUndo}

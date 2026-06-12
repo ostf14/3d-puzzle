@@ -91,23 +91,23 @@ const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose }) => {
           fontStyle: 'italic',
           letterSpacing: '0.02em',
           color: 'rgba(255, 255, 255, 0.95)',
-          margin: '0 0 28px 0',
+          margin: '0 0 20px 0',
           lineHeight: 1.1,
         }}>
-          Asklepios
+          Puzzle Complete!
         </h1>
 
-        {/* Description */}
+        {/* Congratulatory message — statue details live in the InfoPanel now. */}
         <p style={{
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          fontSize: '14px',
+          fontSize: '15px',
           fontWeight: 300,
-          color: 'rgba(255, 255, 255, 0.6)',
-          lineHeight: 1.7,
+          color: 'rgba(255, 255, 255, 0.7)',
+          lineHeight: 1.6,
           margin: 0,
           letterSpacing: '0.01em',
         }}>
-          Statue of Asclepius in the park of Schönbrunn Palace. He is depicted as an old, bearded man, supported by a stick wrapped by a snake, which is considered to be the tree of life. The snake symbolises both wisdom and renewal. In Greek and Roman mythology, Asclepius is the god of healing.
+          You&rsquo;ve successfully reassembled the sculpture.
         </p>
       </div>
 
