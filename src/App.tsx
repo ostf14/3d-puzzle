@@ -4,14 +4,17 @@ import { OrbitControls } from '@react-three/drei'
 import Scene from './Scene'
 import PuzzleUI from './PuzzleUI'
 import SuccessPopup from './SuccessPopup'
-import ModelSelector from './ModelSelector'
+// import ModelSelector from './ModelSelector' // re-enable when restoring the selector flow
 import * as THREE from 'three'
 
 // Global ref for OrbitControls to enable dynamic target updates
 export const orbitControlsRef: { current: any } = { current: null }
 
 function App() {
-  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  // ModelSelector temporarily bypassed — always load Asklepios on start.
+  // To restore the selector: switch type back to `string | null` with initial null,
+  // re-import ModelSelector, and re-add the `if (!selectedModel) return <ModelSelector .../>` branch.
+  const [selectedModel] = useState<string>('/models/Test_object.glb')
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -45,26 +48,15 @@ function App() {
     }
   }
 
-  const handleBackToMenu = () => {
-    setSelectedModel(null)
-    setShowSuccess(false)
-  }
-
-  // Show model selector if no model is selected
-  if (!selectedModel) {
-    return <ModelSelector onSelectModel={setSelectedModel} />
-  }
-
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       {showSuccess && <SuccessPopup onClose={() => setShowSuccess(false)} />}
-      
-      <PuzzleUI 
+
+      <PuzzleUI
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
-        onBackToMenu={handleBackToMenu}
       />
       
       <Canvas
