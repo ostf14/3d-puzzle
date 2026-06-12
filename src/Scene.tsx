@@ -13,6 +13,29 @@ const VISIBLE_FRAGMENT_COUNT = 13
 // to track during scramble) and still complete the puzzle.
 const REQUIRED_SNAP_COUNT = 12
 
+// Radius of the scramble sphere — pieces are scattered on this surface.
+const SCRAMBLE_RADIUS = 5
+
+// N evenly-spaced points on a unit-radius sphere via the Fibonacci spiral.
+// Adjacent points are ~sqrt(4π/N) radians apart, so for 13 points at R=5
+// nearest neighbors are roughly 2.8 units of chord apart — way more than
+// any piece's bbox, so overlap/occlusion after scramble is impossible.
+function fibonacciSpherePoints(n: number, radius: number): THREE.Vector3[] {
+  const points: THREE.Vector3[] = []
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5))
+  for (let i = 0; i < n; i++) {
+    const y = n === 1 ? 0 : 1 - (i / (n - 1)) * 2
+    const ringR = Math.sqrt(Math.max(0, 1 - y * y))
+    const t = goldenAngle * i
+    points.push(new THREE.Vector3(
+      Math.cos(t) * ringR * radius,
+      y * radius,
+      Math.sin(t) * ringR * radius,
+    ))
+  }
+  return points
+}
+
 interface FragmentData {
   mesh: THREE.Mesh
   originalPosition: THREE.Vector3
@@ -309,6 +332,32 @@ function Scene({ modelPath }: SceneProps) {
       }
     })
     console.log(`Active fragments: ${Math.min(VISIBLE_FRAGMENT_COUNT, fragmentsMap.size)} of ${fragmentsMap.size}, need ${REQUIRED_SNAP_COUNT} to win`)
+
+    // Re-scramble active pieces onto an evenly-spaced Fibonacci sphere so
+    // no two pieces can overlap or hide behind each other. Random rotation
+    // + Fisher–Yates shuffle keep the layout fresh per session.
+    const activeNames = sortedByVolume
+      .slice(0, VISIBLE_FRAGMENT_COUNT)
+      .map(([n]) => n)
+    const positions = fibonacciSpherePoints(activeNames.length, SCRAMBLE_RADIUS)
+    const rotMat = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2,
+    ))
+    positions.forEach(p => p.applyMatrix4(rotMat))
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[positions[i], positions[j]] = [positions[j], positions[i]]
+    }
+    activeNames.forEach((name, i) => {
+      const newPos = positions[i]
+      const frag = fragmentsMap.get(name)!
+      frag.currentPosition.copy(newPos)
+      frag.targetPosition.copy(newPos)
+      const fragmentObj = gltf.scene.children.find((c: any) => c.name === name)
+      if (fragmentObj) fragmentObj.position.copy(newPos)
+    })
 
     // Build adjacency map based on original positions
     const fragmentNames = Array.from(fragmentsMap.keys())
