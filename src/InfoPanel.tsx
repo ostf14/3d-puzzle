@@ -37,12 +37,18 @@ const InfoPanel: React.FC = () => {
         />
       )}
 
-      {/* Scoped scrollbar styling — inline styles can't address
-          ::-webkit-scrollbar pseudo-elements. */}
+      {/* Scoped scrollbar styling + mobile-safe height. Inline styles can't
+          address ::-webkit-scrollbar pseudo-elements, and the dual height
+          declaration lets older browsers fall back to 100vh while modern
+          mobile browsers use 100dvh (which accounts for the URL bar so the
+          bottom of the panel never hides behind it). */}
       <style>{`
         .info-panel-scroll {
+          height: 100vh;
+          height: 100dvh;
           scrollbar-width: thin;
           scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+          -webkit-overflow-scrolling: touch;
         }
         .info-panel-scroll::-webkit-scrollbar {
           width: 6px;
@@ -63,10 +69,11 @@ const InfoPanel: React.FC = () => {
       <aside
         className="info-panel-scroll"
         style={{
+          // height is handled in the <style> block above (100vh fallback +
+          // 100dvh override) so the panel respects the mobile URL bar.
           position: 'fixed',
           top: 0,
           left: 0,
-          height: '100vh',
           width: PANEL_W,
           background: 'rgba(15, 15, 15, 0.92)',
           backdropFilter: 'blur(16px)',

@@ -192,6 +192,44 @@ function Scene({ modelPath }: SceneProps) {
       console.log(`Group ${id}: members=${Array.from(group.members).join(', ')}`)
     })
 
+    // Pull every single (ungrouped) active piece back onto a fresh Fibonacci
+    // sphere so the player can always see all unattached pieces clearly.
+    // Multi-member groups stay where they are — the assembled body shouldn't
+    // teleport away from under the player's hand.
+    const singleNames: string[] = []
+    fragments.forEach((frag, name) => {
+      if (!frag.isActive) return
+      if (frag.groupId) {
+        const g = groups.get(frag.groupId)
+        if (g && g.members.size > 1) return
+      }
+      singleNames.push(name)
+    })
+
+    if (singleNames.length > 0) {
+      const fibPoints = fibonacciSpherePoints(singleNames.length, SCRAMBLE_RADIUS)
+      const rotMat = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+      ))
+      fibPoints.forEach(p => p.applyMatrix4(rotMat))
+      for (let i = fibPoints.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[fibPoints[i], fibPoints[j]] = [fibPoints[j], fibPoints[i]]
+      }
+
+      const newFragments = new Map(fragments)
+      singleNames.forEach((name, i) => {
+        const f = newFragments.get(name)!
+        f.targetPosition.copy(fibPoints[i])
+        // lerpProgress=0 hands control to the existing useFrame lerp which
+        // animates currentPosition → targetPosition over ~0.3 s.
+        f.lerpProgress = 0
+      })
+      setFragments(newFragments)
+    }
+
     setHighlightActive(true)
 
     // After the visible window, kick off the fade (handled by useFrame).
