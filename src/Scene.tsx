@@ -358,7 +358,6 @@ function Scene({ modelPath }: SceneProps) {
         cached = { pos: wp, rot: wr }
         originalPoseCache.set(fragmentObj.name, cached)
       }
-      const worldPos = cached.pos
 
       // Generate random position on sphere (radius 5)
       const theta = Math.random() * Math.PI * 2
