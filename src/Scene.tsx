@@ -94,21 +94,52 @@ function Scene({ modelPath }: SceneProps) {
   const highlightTimerRef = useRef<number | null>(null)
   // Halo sprites attached to currently-highlighted fragments (one per piece).
   const haloSpritesRef = useRef<Map<string, THREE.Sprite>>(new Map())
+  // Fade-out phase tracker. null = not fading. number = remaining opacity
+  // in [0..1]; decremented each frame, sprites removed at 0.
+  const haloFadeRef = useRef<number | null>(null)
 
-  // Soft radial-gradient texture used by the halo sprites — built once via
-  // a <canvas>, no external assets needed. Gold core fading to warm orange.
+  // Soft radial-gradient texture used by the halo sprites. We fill the
+  // canvas pixel-by-pixel with a continuous formula (quadratic-ish falloff)
+  // and add ±2 alpha-units of dither noise — Canvas's built-in radial
+  // gradient produced visible concentric bands at 8-bit color depth.
   const haloTexture = useMemo(() => {
+    const size = 512
     const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 256
+    canvas.width = canvas.height = size
     const ctx = canvas.getContext('2d')!
-    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128)
-    g.addColorStop(0,    'rgba(255, 245, 220, 1)')
-    g.addColorStop(0.22, 'rgba(255, 215, 100, 0.65)')
-    g.addColorStop(0.55, 'rgba(255, 170, 50, 0.18)')
-    g.addColorStop(1,    'rgba(255, 140, 0, 0)')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, 256, 256)
+    const img = ctx.createImageData(size, size)
+    const data = img.data
+    const c = size / 2
+    const maxR = size / 2
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const dx = x - c
+        const dy = y - c
+        const d = Math.sqrt(dx * dx + dy * dy) / maxR // 0..1+
+        const idx = (y * size + x) * 4
+        if (d >= 1) {
+          data[idx + 3] = 0
+          continue
+        }
+        // Smooth alpha falloff — pow(1-d, 2.5) gives a soft halo with a
+        // bright core and a long fading tail, no abrupt rings.
+        const falloff = Math.pow(1 - d, 2.5)
+        // Continuous color: hot near-white center → warm orange edge.
+        const r = 255
+        const g = 255 - 100 * d       // 255 → 155
+        const b = 230 - 230 * d       // 230 → 0
+        // Dither breaks up the remaining 8-bit quantization steps.
+        const noise = (Math.random() - 0.5) * 3
+        const a = Math.max(0, Math.min(255, falloff * 255 + noise))
+        data[idx]     = r
+        data[idx + 1] = g
+        data[idx + 2] = b
+        data[idx + 3] = a
+      }
+    }
+
+    ctx.putImageData(img, 0, 0)
     const tex = new THREE.CanvasTexture(canvas)
     tex.needsUpdate = true
     return tex
@@ -133,13 +164,22 @@ function Scene({ modelPath }: SceneProps) {
     snapSound.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUKXh8LhjHAU2jdXwyXksBSF0xPDdkEAJFF+16+qnVRQKRp/g8r5sIQUrgc7y2Yk2CBtpvfDknE4MDlCl4fC4YxwFNo3V8Ml5LAUhdMTw3ZBACQ==') // Simple click sound
   }, [])
 
-  // Highlight unsnapped fragments function
+  // Highlight unsnapped fragments. 3 s of full visibility, then 1.5 s of
+  // smooth fade-out animated in useFrame. Re-clicking during either phase
+  // restarts from full opacity.
+  const HALO_FULL_OPACITY = 0.95
+  const HIGHLIGHT_VISIBLE_MS = 3000
+
   const highlightUnsnapped = useCallback(() => {
-    // Clear any existing timer
     if (highlightTimerRef.current !== null) {
       clearTimeout(highlightTimerRef.current)
     }
-    
+    // Cancel any in-progress fade and restore opacity on existing sprites.
+    haloFadeRef.current = null
+    haloSpritesRef.current.forEach(s => {
+      (s.material as THREE.SpriteMaterial).opacity = HALO_FULL_OPACITY
+    })
+
     // Debug: log current state
     console.log('=== HIGHLIGHT ACTIVATED ===')
     console.log('Total fragments:', fragments.size)
@@ -150,14 +190,14 @@ function Scene({ modelPath }: SceneProps) {
     groups.forEach((group, id) => {
       console.log(`Group ${id}: members=${Array.from(group.members).join(', ')}`)
     })
-    
+
     setHighlightActive(true)
-    
-    // Auto-disable after 3 seconds
+
+    // After the visible window, kick off the fade (handled by useFrame).
     highlightTimerRef.current = window.setTimeout(() => {
-      setHighlightActive(false)
+      haloFadeRef.current = 1
       highlightTimerRef.current = null
-    }, 3000)
+    }, HIGHLIGHT_VISIBLE_MS)
   }, [fragments, groups])
 
   // Attach/remove a glowing halo sprite per single (ungrouped) piece while
@@ -849,6 +889,23 @@ function Scene({ modelPath }: SceneProps) {
       canvas.removeEventListener('touchend', handlePointerUp)
     }
   }, [gl, fragments, camera, size])
+
+  // Halo fade-out: when haloFadeRef is set, decrement it each frame and
+  // mirror to every sprite's material.opacity. Hitting 0 flips highlightActive
+  // off, which triggers the cleanup branch of the halo effect.
+  const HALO_FADE_SEC = 1.5
+  useFrame((_state: any, delta: any) => {
+    if (haloFadeRef.current === null) return
+    haloFadeRef.current = Math.max(0, haloFadeRef.current - delta / HALO_FADE_SEC)
+    const op = haloFadeRef.current * HALO_FULL_OPACITY
+    haloSpritesRef.current.forEach(s => {
+      (s.material as THREE.SpriteMaterial).opacity = op
+    })
+    if (haloFadeRef.current <= 0) {
+      haloFadeRef.current = null
+      setHighlightActive(false)
+    }
+  })
 
   // Animation loop for lerping and collision detection
   useFrame((_state: any, delta: any) => {
