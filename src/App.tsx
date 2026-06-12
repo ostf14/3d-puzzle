@@ -50,11 +50,12 @@ function App() {
   }
 
   // Keyboard shortcuts: Ctrl/Cmd+Z for undo, Ctrl/Cmd+Shift+Z for redo.
-  // Underlying puzzleUndo/puzzleRedo no-op safely when at history bounds.
+  // Match on e.code (physical key, layout-independent) — e.key would give "я"
+  // on Cyrillic layouts and miss the shortcut entirely.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.ctrlKey || e.metaKey
-      if (!isMod || e.key.toLowerCase() !== 'z') return
+      if (!isMod || e.code !== 'KeyZ') return
       e.preventDefault()
       const fn = e.shiftKey ? (window as any).puzzleRedo : (window as any).puzzleUndo
       if (typeof fn === 'function') fn()
