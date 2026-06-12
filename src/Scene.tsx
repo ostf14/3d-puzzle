@@ -18,6 +18,7 @@ interface FragmentData {
   groupId: string | null // ID of the group this fragment belongs to
   neighbors: string[] // Names of originally adjacent fragments
   volume: number
+  isActive: boolean // True for the N largest pieces that actually count toward the puzzle
 }
 
 interface FragmentGroup {
@@ -94,8 +95,6 @@ function Scene({ modelPath }: SceneProps) {
     }
   }, [haloTexture])
   
-  // Volume threshold - fragments smaller than this are considered insignificant
-  const VOLUME_THRESHOLD = 0.001 // Lowered to include more fragments
 
   // Initialize snap sound
   useEffect(() => {
@@ -267,13 +266,8 @@ function Scene({ modelPath }: SceneProps) {
         
         console.log(`Fragment ${fragmentObj.name} size:`, size, 'volume:', volume.toFixed(4))
         
-        // Hide insignificant fragments
-        const isSignificant = volume >= 0.001 // VOLUME_THRESHOLD
-        if (!isSignificant) {
-          fragmentObj.visible = false
-          console.log(`Hiding insignificant fragment: ${fragmentObj.name}`)
-        }
-        
+        // Visibility is decided after this loop in the active-pass below.
+
         fragmentsMap.set(fragmentObj.name, {
           mesh: meshChild,
           originalPosition: worldPos.clone(),
@@ -287,11 +281,28 @@ function Scene({ modelPath }: SceneProps) {
           lerpProgress: 1,
           groupId: null,
           neighbors: [], // Will be computed next
-          volume: volume // Store volume for completion check
+          volume: volume, // Store volume for completion check
+          isActive: false, // Decided after we know all volumes (see active-pass below)
         })
       }
     })
     
+    // Pick the N largest fragments as "active". Everything below the cutoff
+    // is hidden and excluded from progress + completion. The cutoff (12) was
+    // chosen empirically — the 13th piece in this model is too small to find.
+    const ACTIVE_FRAGMENT_COUNT = 12
+    const sortedByVolume = Array.from(fragmentsMap.entries())
+      .sort(([, a], [, b]) => b.volume - a.volume)
+    sortedByVolume.forEach(([name, frag], index) => {
+      const active = index < ACTIVE_FRAGMENT_COUNT
+      frag.isActive = active
+      if (!active) {
+        const fragmentObj = gltf.scene.children.find((c: any) => c.name === name)
+        if (fragmentObj) fragmentObj.visible = false
+      }
+    })
+    console.log(`Active fragments: ${Math.min(ACTIVE_FRAGMENT_COUNT, fragmentsMap.size)} of ${fragmentsMap.size}`)
+
     // Build adjacency map based on original positions
     const fragmentNames = Array.from(fragmentsMap.keys())
     const NEIGHBOR_THRESHOLD = 1.5 // Distance threshold for considering pieces as neighbors
@@ -676,24 +687,24 @@ function Scene({ modelPath }: SceneProps) {
     return center
   }, [])
 
-  // Check if puzzle is complete (all significant pieces are snapped)
+  // Check if puzzle is complete (all active pieces are snapped)
   const checkPuzzleCompletion = useCallback((frags: Map<string, FragmentData>) => {
-    let significantTotal = 0
-    let significantSnapped = 0
-    
+    let activeTotal = 0
+    let activeSnapped = 0
+
     frags.forEach(frag => {
-      if (frag.volume >= VOLUME_THRESHOLD) {
-        significantTotal++
+      if (frag.isActive) {
+        activeTotal++
         if (frag.isSnapped) {
-          significantSnapped++
+          activeSnapped++
         }
       }
     })
-    
-    console.log(`Puzzle completion: ${significantSnapped}/${significantTotal} significant pieces snapped`)
-    
-    return significantTotal > 0 && significantSnapped === significantTotal
-  }, [VOLUME_THRESHOLD])
+
+    console.log(`Puzzle completion: ${activeSnapped}/${activeTotal} active pieces snapped`)
+
+    return activeTotal > 0 && activeSnapped === activeTotal
+  }, [])
 
   // Handle pointer up
   const handlePointerUp = () => {
@@ -864,9 +875,9 @@ function Scene({ modelPath }: SceneProps) {
   const getProgress = useCallback(() => {
     let significantTotal = 0
     let significantSnapped = 0
-    
+
     fragments.forEach(frag => {
-      if (frag.volume >= VOLUME_THRESHOLD) {
+      if (frag.isActive) {
         significantTotal++
         if (frag.isSnapped) {
           significantSnapped++
@@ -875,7 +886,7 @@ function Scene({ modelPath }: SceneProps) {
     })
     
     return { snapped: significantSnapped, total: significantTotal }
-  }, [fragments, VOLUME_THRESHOLD])
+  }, [fragments])
 
   // Expose undo/redo functions, completion state, progress, and highlight via window for UI access
   useEffect(() => {
