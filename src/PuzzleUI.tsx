@@ -172,7 +172,7 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
         }}>
           <div style={{
             fontFamily: '"Doto", sans-serif',
-            fontSize: '28px',
+            fontSize: '22px',
             fontWeight: 700,
             color: 'white',
             fontVariantNumeric: 'tabular-nums',
