@@ -159,9 +159,21 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
           onMouseUp={onUp(canUndo)}
           aria-label="Undo"
         >
-          {/* Glyph U+21B6 sits high in the em-box; nudge it down to the
-              visual center of the button. */}
-          <span style={{ display: 'block', transform: 'translateY(3px)' }}>↶</span>
+          {/* Lucide "undo-2" icon, inlined */}
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 14 4 9l5-5" />
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" />
+          </svg>
         </button>
 
         {/* Progress: count + animated fill bar */}
@@ -209,7 +221,21 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
           onMouseUp={onUp(canRedo)}
           aria-label="Redo"
         >
-          <span style={{ display: 'block', transform: 'translateY(3px)' }}>↷</span>
+          {/* Lucide "redo-2" icon, inlined */}
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m15 14 5-5-5-5" />
+            <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13" />
+          </svg>
         </button>
       </div>
 
