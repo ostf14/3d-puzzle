@@ -98,6 +98,13 @@ function Scene({ modelPath }: SceneProps) {
   // Fade-out phase tracker. null = not fading. number = remaining opacity
   // in [0..1]; decremented each frame, sprites removed at 0.
   const haloFadeRef = useRef<number | null>(null)
+  // Active gold-dust particle bursts spawned on snap. Each burst owns its
+  // own THREE.Points object and a JS-side particle list (position+velocity+
+  // life). useFrame ticks them; expired bursts are auto-removed.
+  const dustBurstsRef = useRef<Array<{
+    points: THREE.Points
+    particles: Array<{ pos: THREE.Vector3; vel: THREE.Vector3; life: number; maxLife: number }>
+  }>>([])
 
   // Soft radial-gradient texture used by the halo sprites. We fill the
   // canvas pixel-by-pixel with a continuous formula (quadratic-ish falloff)
@@ -146,18 +153,45 @@ function Scene({ modelPath }: SceneProps) {
     return tex
   }, [])
 
-  // Dispose the texture and any leftover sprites when the scene unmounts.
+  // Soft round granule texture for the gold-dust particles. Not a halo —
+  // just an anti-aliased circle so each particle reads as a grain of sand.
+  const dustTexture = useMemo(() => {
+    const size = 64
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = size
+    const ctx = canvas.getContext('2d')!
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+    g.addColorStop(0,    'rgba(255, 255, 255, 1)')
+    g.addColorStop(0.65, 'rgba(255, 255, 255, 0.9)')
+    g.addColorStop(1,    'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, size, size)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [])
+
+  // Dispose the textures, leftover sprites, and any in-flight dust bursts
+  // when the scene unmounts.
   useEffect(() => {
     const sprites = haloSpritesRef.current
+    const bursts = dustBurstsRef.current
     return () => {
       sprites.forEach(s => {
         s.parent?.remove(s)
         s.material.dispose()
       })
       sprites.clear()
+      bursts.forEach(b => {
+        b.points.parent?.remove(b.points)
+        b.points.geometry.dispose()
+        ;(b.points.material as THREE.PointsMaterial).dispose()
+      })
+      bursts.length = 0
       haloTexture.dispose()
+      dustTexture.dispose()
     }
-  }, [haloTexture])
+  }, [haloTexture, dustTexture])
   
 
   // Initialize snap sound
@@ -761,6 +795,66 @@ function Scene({ modelPath }: SceneProps) {
     }
   }
 
+  // Spawn a burst of gold-dust particles at a world-space point — call on
+  // snap with the seam point between the two joining pieces. Particles drop
+  // under gravity, drift sideways from a small lateral kick, and fade out
+  // over ~2 seconds. Normal blending + tinted gold = sand, not glowing balls.
+  const spawnDustBurst = useCallback((position: THREE.Vector3) => {
+    const particleCount = 80
+    const positions = new Float32Array(particleCount * 3)
+    const colors = new Float32Array(particleCount * 3)
+    const particles: Array<{ pos: THREE.Vector3; vel: THREE.Vector3; life: number; maxLife: number }> = []
+
+    for (let i = 0; i < particleCount; i++) {
+      // Spawn close to the seam with a small random offset
+      const p = new THREE.Vector3(
+        position.x + (Math.random() - 0.5) * 0.12,
+        position.y + (Math.random() - 0.5) * 0.05,
+        position.z + (Math.random() - 0.5) * 0.12,
+      )
+      positions[i * 3]     = p.x
+      positions[i * 3 + 1] = p.y
+      positions[i * 3 + 2] = p.z
+
+      // Each grain a slightly different gold shade
+      const shade = 0.65 + Math.random() * 0.35 // 0.65 .. 1.0
+      colors[i * 3]     = shade * 1.00          // R
+      colors[i * 3 + 1] = shade * 0.78          // G
+      colors[i * 3 + 2] = shade * 0.25          // B
+
+      particles.push({
+        pos: p,
+        vel: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.35,
+          0.05 + Math.random() * 0.25,          // gentle upward kick
+          (Math.random() - 0.5) * 0.35,
+        ),
+        life: 1,
+        maxLife: 1.2 + Math.random() * 0.9,     // total lifetime 1.2 .. 2.1 s
+      })
+    }
+
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.022,
+      vertexColors: true,
+      map: dustTexture,
+      transparent: true,
+      opacity: 1,
+      sizeAttenuation: true,
+      blending: THREE.NormalBlending, // sand reflects light, doesn't emit it
+      depthWrite: false,
+      alphaTest: 0.05,
+    })
+
+    const points = new THREE.Points(geo, mat)
+    gltf.scene.add(points)
+    dustBurstsRef.current.push({ points, particles })
+  }, [gltf.scene, dustTexture])
+
   // Calculate center of a group
   const calculateGroupCenter = useCallback((groupId: string, frags: Map<string, FragmentData>, grps: Map<string, FragmentGroup>) => {
     const group = grps.get(groupId)
@@ -837,7 +931,15 @@ function Scene({ modelPath }: SceneProps) {
         //   snapSound.current.currentTime = 0
         //   snapSound.current.play().catch(() => {}) // Ignore audio errors
         // }
-        
+
+        // Gold dust burst at the seam between the snapped piece and its
+        // neighbor — midpoint of their world positions.
+        const neighborFrag = newFragments.get(snapResult.neighborName)
+        if (neighborFrag) {
+          const seam = snapResult.targetPosition.clone().lerp(neighborFrag.currentPosition, 0.5)
+          spawnDustBurst(seam)
+        }
+
         console.log(`Fragment ${fragmentName} snapped to ${snapResult.neighborName}`)
       } else {
         // No snap - just set target to current position
@@ -905,6 +1007,47 @@ function Scene({ modelPath }: SceneProps) {
     if (haloFadeRef.current <= 0) {
       haloFadeRef.current = null
       setHighlightActive(false)
+    }
+  })
+
+  // Gold-dust particle physics — ticks every active burst, fades & disposes
+  // when its last grain dies.
+  useFrame((_state: any, delta: any) => {
+    const bursts = dustBurstsRef.current
+    if (bursts.length === 0) return
+    const GRAVITY = 1.8     // world-Y pull per second²
+    const DRAG = 0.97       // velocity multiplier per frame
+    for (let bi = bursts.length - 1; bi >= 0; bi--) {
+      const burst = bursts[bi]
+      const posAttr = burst.points.geometry.getAttribute('position') as THREE.BufferAttribute
+      const positions = posAttr.array as Float32Array
+      let aliveCount = 0
+      let maxLife = 0
+      for (let i = 0; i < burst.particles.length; i++) {
+        const p = burst.particles[i]
+        if (p.life <= 0) continue
+        p.vel.y -= GRAVITY * delta
+        p.vel.multiplyScalar(DRAG)
+        p.pos.x += p.vel.x * delta
+        p.pos.y += p.vel.y * delta
+        p.pos.z += p.vel.z * delta
+        p.life -= delta / p.maxLife
+        positions[i * 3]     = p.pos.x
+        positions[i * 3 + 1] = p.pos.y
+        positions[i * 3 + 2] = p.pos.z
+        if (p.life > 0) {
+          aliveCount++
+          if (p.life > maxLife) maxLife = p.life
+        }
+      }
+      posAttr.needsUpdate = true
+      ;(burst.points.material as THREE.PointsMaterial).opacity = Math.max(0, maxLife)
+      if (aliveCount === 0) {
+        burst.points.parent?.remove(burst.points)
+        burst.points.geometry.dispose()
+        ;(burst.points.material as THREE.PointsMaterial).dispose()
+        bursts.splice(bi, 1)
+      }
     }
   })
 
