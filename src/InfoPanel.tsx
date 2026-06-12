@@ -37,8 +37,31 @@ const InfoPanel: React.FC = () => {
         />
       )}
 
+      {/* Scoped scrollbar styling — inline styles can't address
+          ::-webkit-scrollbar pseudo-elements. */}
+      <style>{`
+        .info-panel-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+        .info-panel-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .info-panel-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .info-panel-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 3px;
+        }
+        .info-panel-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
+
       {/* Slide-out drawer */}
       <aside
+        className="info-panel-scroll"
         style={{
           position: 'fixed',
           top: 0,
