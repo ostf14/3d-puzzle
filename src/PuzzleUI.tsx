@@ -159,7 +159,9 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
           onMouseUp={onUp(canUndo)}
           aria-label="Undo"
         >
-          ↶
+          {/* Glyph U+21B6 sits high in the em-box; nudge it down to the
+              visual center of the button. */}
+          <span style={{ display: 'block', transform: 'translateY(3px)' }}>↶</span>
         </button>
 
         {/* Progress: count + animated fill bar */}
@@ -207,7 +209,7 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
           onMouseUp={onUp(canRedo)}
           aria-label="Redo"
         >
-          ↷
+          <span style={{ display: 'block', transform: 'translateY(3px)' }}>↷</span>
         </button>
       </div>
 
