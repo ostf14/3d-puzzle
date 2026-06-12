@@ -1,8 +1,31 @@
-import React from 'react'
-import { useProgress } from '@react-three/drei'
+import React, { useState, useEffect } from 'react'
+
+// Model load takes ~11s on typical connections. Animate a fake progress bar
+// linearly from 0 → 99% over that window so users see steady, predictable
+// motion. Cap at 99% so the bar never sits at "100% but still loading".
+// Suspense will unmount this overlay the moment the GLB actually resolves.
+const LOAD_DURATION_MS = 11000
+const PROGRESS_CAP = 99
 
 const LoadingOverlay: React.FC = () => {
-  const { progress } = useProgress()
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    const startTime = performance.now()
+    let rafId = 0
+
+    const tick = () => {
+      const elapsed = performance.now() - startTime
+      const next = Math.min((elapsed / LOAD_DURATION_MS) * PROGRESS_CAP, PROGRESS_CAP)
+      setProgress(next)
+      if (next < PROGRESS_CAP) {
+        rafId = requestAnimationFrame(tick)
+      }
+    }
+
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [])
 
   return (
     <div style={{
@@ -39,7 +62,6 @@ const LoadingOverlay: React.FC = () => {
           width: `${progress}%`,
           height: '100%',
           backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          transition: 'width 0.3s ease-out',
         }} />
       </div>
 
