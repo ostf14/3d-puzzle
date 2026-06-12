@@ -4,6 +4,15 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { orbitControlsRef } from './App'
 
+// How many fragments are actually rendered on screen, picked as the largest
+// pieces by bbox volume. Anything below the cutoff stays hidden.
+const VISIBLE_FRAGMENT_COUNT = 13
+
+// How many snapped pieces declare the puzzle solved. With this < VISIBLE,
+// the player can ignore any single piece (e.g. the tiny ones that are hard
+// to track during scramble) and still complete the puzzle.
+const REQUIRED_SNAP_COUNT = 12
+
 interface FragmentData {
   mesh: THREE.Mesh
   originalPosition: THREE.Vector3
@@ -288,20 +297,18 @@ function Scene({ modelPath }: SceneProps) {
     })
     
     // Pick the N largest fragments as "active". Everything below the cutoff
-    // is hidden and excluded from progress + completion. The cutoff (12) was
-    // chosen empirically — the 13th piece in this model is too small to find.
-    const ACTIVE_FRAGMENT_COUNT = 12
+    // is hidden and excluded from progress + completion.
     const sortedByVolume = Array.from(fragmentsMap.entries())
       .sort(([, a], [, b]) => b.volume - a.volume)
     sortedByVolume.forEach(([name, frag], index) => {
-      const active = index < ACTIVE_FRAGMENT_COUNT
+      const active = index < VISIBLE_FRAGMENT_COUNT
       frag.isActive = active
       if (!active) {
         const fragmentObj = gltf.scene.children.find((c: any) => c.name === name)
         if (fragmentObj) fragmentObj.visible = false
       }
     })
-    console.log(`Active fragments: ${Math.min(ACTIVE_FRAGMENT_COUNT, fragmentsMap.size)} of ${fragmentsMap.size}`)
+    console.log(`Active fragments: ${Math.min(VISIBLE_FRAGMENT_COUNT, fragmentsMap.size)} of ${fragmentsMap.size}, need ${REQUIRED_SNAP_COUNT} to win`)
 
     // Build adjacency map based on original positions
     const fragmentNames = Array.from(fragmentsMap.keys())
@@ -687,23 +694,17 @@ function Scene({ modelPath }: SceneProps) {
     return center
   }, [])
 
-  // Check if puzzle is complete (all active pieces are snapped)
+  // Puzzle is solved once REQUIRED_SNAP_COUNT pieces are in place — any
+  // remaining piece beyond that is optional.
   const checkPuzzleCompletion = useCallback((frags: Map<string, FragmentData>) => {
-    let activeTotal = 0
     let activeSnapped = 0
-
     frags.forEach(frag => {
-      if (frag.isActive) {
-        activeTotal++
-        if (frag.isSnapped) {
-          activeSnapped++
-        }
-      }
+      if (frag.isActive && frag.isSnapped) activeSnapped++
     })
 
-    console.log(`Puzzle completion: ${activeSnapped}/${activeTotal} active pieces snapped`)
+    console.log(`Puzzle completion: ${activeSnapped}/${REQUIRED_SNAP_COUNT} snapped`)
 
-    return activeTotal > 0 && activeSnapped === activeTotal
+    return activeSnapped >= REQUIRED_SNAP_COUNT
   }, [])
 
   // Handle pointer up
@@ -871,21 +872,22 @@ function Scene({ modelPath }: SceneProps) {
     }
   })
 
-  // Calculate progress for UI
+  // Counter shows X/REQUIRED_SNAP_COUNT — the UI goalpost, not the visible
+  // count. snapped is capped so it never exceeds the goal even if the
+  // player keeps placing the optional extras.
   const getProgress = useCallback(() => {
-    let significantTotal = 0
     let significantSnapped = 0
 
     fragments.forEach(frag => {
-      if (frag.isActive) {
-        significantTotal++
-        if (frag.isSnapped) {
-          significantSnapped++
-        }
+      if (frag.isActive && frag.isSnapped) {
+        significantSnapped++
       }
     })
     
-    return { snapped: significantSnapped, total: significantTotal }
+    return {
+      snapped: Math.min(significantSnapped, REQUIRED_SNAP_COUNT),
+      total: REQUIRED_SNAP_COUNT,
+    }
   }, [fragments])
 
   // Expose undo/redo functions, completion state, progress, and highlight via window for UI access
