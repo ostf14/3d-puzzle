@@ -169,16 +169,15 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
           position: 'relative',
         }}>
           <div style={{
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            fontSize: '20px',
-            fontWeight: 300,
-            letterSpacing: '0.25em',
-            paddingLeft: '0.25em', // compensate trailing letter-spacing
-            color: 'rgba(255, 255, 255, 0.85)',
-            fontVariantNumeric: 'tabular-nums lining-nums',
+            fontFamily: '"Doto", sans-serif',
+            fontSize: '28px',
+            fontWeight: 700,
+            color: 'white',
+            fontVariantNumeric: 'tabular-nums',
             lineHeight: 1,
+            textShadow: '0 0 8px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.3)',
           }}>
-            {progress.snapped}<span style={{ opacity: 0.4 }}>/</span>{progress.total}
+            {progress.snapped}/{progress.total}
           </div>
           <div style={{
             height: '2px',
