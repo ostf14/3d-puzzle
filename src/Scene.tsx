@@ -49,7 +49,6 @@ function Scene({ modelPath }: SceneProps) {
   const [groups, setGroups] = useState<Map<string, FragmentGroup>>(new Map())
   const [history, setHistory] = useState<HistoryState[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  const [particleEffects, setParticleEffects] = useState<Array<{ id: string; position: THREE.Vector3; neighborPosition: THREE.Vector3; active: boolean }>>([])
   const [isPuzzleComplete, setIsPuzzleComplete] = useState(false)
   const [highlightActive, setHighlightActive] = useState(false)
   const dragPlane = useRef(new THREE.Plane())
@@ -794,7 +793,7 @@ function Scene({ modelPath }: SceneProps) {
             
             // Move the parent fragment object
             const fragmentObjA = gltf.scene.children.find((child: any) => 
-              Array.from(fragments.entries()).find(([fragName, frag]) => frag === fragA)?.[0] === child.name
+              Array.from(fragments.entries()).find(([, frag]) => frag === fragA)?.[0] === child.name
             )
             if (fragmentObjA) fragmentObjA.position.copy(fragA.currentPosition)
           }
@@ -805,7 +804,7 @@ function Scene({ modelPath }: SceneProps) {
             
             // Move the parent fragment object
             const fragmentObjB = gltf.scene.children.find((child: any) => 
-              Array.from(fragments.entries()).find(([fragName, frag]) => frag === fragB)?.[0] === child.name
+              Array.from(fragments.entries()).find(([, frag]) => frag === fragB)?.[0] === child.name
             )
             if (fragmentObjB) fragmentObjB.position.copy(fragB.currentPosition)
           }
