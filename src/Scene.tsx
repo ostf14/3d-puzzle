@@ -192,22 +192,31 @@ function Scene({ modelPath }: SceneProps) {
       console.log(`Group ${id}: members=${Array.from(group.members).join(', ')}`)
     })
 
-    // Pull every single (ungrouped) active piece back onto a fresh Fibonacci
-    // sphere so the player can always see all unattached pieces clearly.
-    // Multi-member groups stay where they are — the assembled body shouldn't
-    // teleport away from under the player's hand.
-    const singleNames: string[] = []
-    fragments.forEach((frag, name) => {
-      if (!frag.isActive) return
-      if (frag.groupId) {
-        const g = groups.get(frag.groupId)
-        if (g && g.members.size > 1) return
+    // Treat the largest group as the "main assembly" — that one stays put.
+    // Everything else (singles AND any smaller orphan groups) is considered
+    // stray, gets highlighted, and is pulled back onto a fresh Fibonacci
+    // sphere. Orphan groups are dismantled in the process so their pieces
+    // become individually draggable again.
+    let mainGroupId: string | null = null
+    let mainSize = 0
+    groups.forEach((g, id) => {
+      if (g.members.size > mainSize) {
+        mainSize = g.members.size
+        mainGroupId = id
       }
-      singleNames.push(name)
     })
 
-    if (singleNames.length > 0) {
-      const fibPoints = fibonacciSpherePoints(singleNames.length, SCRAMBLE_RADIUS)
+    const strayNames: string[] = []
+    const orphanGroupIds = new Set<string>()
+    fragments.forEach((frag, name) => {
+      if (!frag.isActive) return
+      if (frag.groupId && frag.groupId === mainGroupId) return // in main assembly
+      strayNames.push(name)
+      if (frag.groupId) orphanGroupIds.add(frag.groupId)
+    })
+
+    if (strayNames.length > 0) {
+      const fibPoints = fibonacciSpherePoints(strayNames.length, SCRAMBLE_RADIUS)
       const rotMat = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
         Math.random() * Math.PI * 2,
         Math.random() * Math.PI * 2,
@@ -220,14 +229,21 @@ function Scene({ modelPath }: SceneProps) {
       }
 
       const newFragments = new Map(fragments)
-      singleNames.forEach((name, i) => {
+      const newGroups = new Map(groups)
+      strayNames.forEach((name, i) => {
         const f = newFragments.get(name)!
         f.targetPosition.copy(fibPoints[i])
         // lerpProgress=0 hands control to the existing useFrame lerp which
         // animates currentPosition → targetPosition over ~0.3 s.
         f.lerpProgress = 0
+        // Break the piece out of any orphan group so it counts as unsnapped
+        // again and can be re-assembled cleanly.
+        f.groupId = null
+        f.isSnapped = false
       })
+      orphanGroupIds.forEach(id => newGroups.delete(id))
       setFragments(newFragments)
+      setGroups(newGroups)
     }
 
     setHighlightActive(true)
@@ -239,24 +255,27 @@ function Scene({ modelPath }: SceneProps) {
     }, HIGHLIGHT_VISIBLE_MS)
   }, [fragments, groups])
 
-  // Attach/remove a glowing halo sprite per single (ungrouped) piece while
-  // highlight is active. Sprites live as children of each fragment Object3D,
-  // so they inherit position and follow the piece when dragged.
+  // Attach/remove a glowing halo sprite on every active piece that's
+  // *outside* the main assembly. Same predicate as highlightUnsnapped so
+  // a stray piece always halos AND gets pulled in. Sprites live as
+  // children of each fragment Object3D and follow drag motion.
   useEffect(() => {
     const sprites = haloSpritesRef.current
 
-    fragments.forEach((fragment, name) => {
-      // A piece counts as "single" if it has no group, or its group has
-      // exactly one member (itself).
-      let isSinglePiece = false
-      if (!fragment.groupId) {
-        isSinglePiece = true
-      } else {
-        const group = groups.get(fragment.groupId)
-        isSinglePiece = group ? group.members.size === 1 : true
+    // Identify the main assembly = largest group. Pieces in any other
+    // group (or none) are considered stray and qualify for the halo.
+    let mainGroupId: string | null = null
+    let mainSize = 0
+    groups.forEach((g, id) => {
+      if (g.members.size > mainSize) {
+        mainSize = g.members.size
+        mainGroupId = id
       }
+    })
 
-      const shouldHighlight = isSinglePiece && highlightActive
+    fragments.forEach((fragment, name) => {
+      const inMain = !!fragment.groupId && fragment.groupId === mainGroupId
+      const shouldHighlight = fragment.isActive && !inMain && highlightActive
       const existing = sprites.get(name)
 
       if (shouldHighlight && !existing) {
