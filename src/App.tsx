@@ -147,13 +147,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Debug-only: pop the success modal on demand. Resets the once-per-session
-  // latch so it can be re-opened repeatedly.
-  const showPopupForDebug = () => {
-    successShownRef.current = false
-    setShowSuccess(true)
-  }
-
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       {showSuccess && <SuccessPopup onClose={() => setShowSuccess(false)} elapsedSeconds={elapsedSeconds} />}
@@ -210,31 +203,6 @@ function App() {
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
           <path d="M3 3v5h5" />
         </svg>
-      </button>
-
-      {/* DEBUG — remove before shipping. */}
-      <button
-        onClick={showPopupForDebug}
-        style={{
-          position: 'fixed',
-          top: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 1500,
-          padding: '8px 14px',
-          background: 'rgba(255, 0, 80, 0.85)',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          fontSize: '11px',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          textTransform: 'uppercase',
-          letterSpacing: '1px',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-        }}
-      >
-        Debug: show popup
       </button>
 
       <PuzzleUI
