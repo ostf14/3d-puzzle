@@ -464,6 +464,10 @@ function Scene({ modelPath }: SceneProps) {
     
     console.log('Scramble complete! Total fragments:', fragmentsMap.size)
     setFragments(fragmentsMap)
+
+    // Signal the UI layer that a fresh game is ready — App uses this to
+    // (re)start the timer, including after a Restart-key remount.
+    window.dispatchEvent(new CustomEvent('puzzle:ready'))
   }, [gltf])
 
   // Save current state to history

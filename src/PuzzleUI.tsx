@@ -6,6 +6,15 @@ interface PuzzleUIProps {
   canUndo: boolean
   canRedo: boolean
   onBackToMenu?: () => void
+  elapsedSeconds?: number
+}
+
+const formatTime = (s: number) => {
+  const safe = Math.max(0, Math.floor(s))
+  const h = Math.floor(safe / 3600).toString().padStart(2, '0')
+  const m = Math.floor((safe % 3600) / 60).toString().padStart(2, '0')
+  const sec = (safe % 60).toString().padStart(2, '0')
+  return `${h}:${m}:${sec}`
 }
 
 const DEFAULT_SHADOW = 'inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.05)'
@@ -97,7 +106,7 @@ const onFloatUp = (e: React.MouseEvent<HTMLButtonElement>) => {
   e.currentTarget.style.transform = 'scale(1.05)'
 }
 
-const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, onBackToMenu }) => {
+const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, onBackToMenu, elapsedSeconds = 0 }) => {
   const [progress, setProgress] = useState({ snapped: 0, total: 0 })
 
   // Poll for puzzle progress (unchanged)
@@ -182,14 +191,14 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
           textAlign: 'center',
           position: 'relative',
         }}>
+          {/* Progress digits — gold to echo the bar's gradient. */}
           <div style={{
             fontFamily: '"Doto", sans-serif',
-            fontSize: '22px',
+            fontSize: '15px',
             fontWeight: 700,
-            color: 'white',
+            color: '#FFD700',
             fontVariantNumeric: 'tabular-nums',
             lineHeight: 1,
-            textShadow: '0 0 8px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.3)',
           }}>
             {progress.snapped}/{progress.total}
           </div>
@@ -197,7 +206,7 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
             height: '2px',
             borderRadius: '1px',
             background: 'rgba(255,255,255,0.08)',
-            marginTop: '8px',
+            marginTop: '6px',
             overflow: 'hidden',
           }}>
             <div style={{
@@ -207,6 +216,21 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
               background: 'linear-gradient(90deg, #FFD700, #FFA500)',
               transition: 'width 0.4s ease',
             }} />
+          </div>
+          {/* Elapsed-time counter — same Doto + white glow as the popup
+              title, format HH:MM:SS. Counts from puzzle:ready, freezes on
+              puzzle:complete, resets on Restart. */}
+          <div style={{
+            fontFamily: '"Doto", sans-serif',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: 'white',
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1,
+            marginTop: '6px',
+            textShadow: '0 0 8px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.3)',
+          }}>
+            {formatTime(elapsedSeconds)}
           </div>
         </div>
 
