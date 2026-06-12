@@ -25,7 +25,9 @@ function App() {
   // because window.isPuzzleComplete stays true.
   const successShownRef = useRef(false)
 
-  // Poll for undo/redo availability and puzzle completion
+  // Poll for undo/redo availability. Completion isn't polled anymore — it
+  // arrives as a 'puzzle:complete' CustomEvent so the popup fires in the
+  // same frame as the final snap.
   useEffect(() => {
     const interval = setInterval(() => {
       if ((window as any).canUndo) {
@@ -34,13 +36,20 @@ function App() {
       if ((window as any).canRedo) {
         setCanRedo((window as any).canRedo())
       }
-      if ((window as any).isPuzzleComplete && !successShownRef.current) {
-        successShownRef.current = true
-        setShowSuccess(true)
-      }
     }, 100)
 
     return () => clearInterval(interval)
+  }, [])
+
+  // Instant success popup on the final snap.
+  useEffect(() => {
+    const onComplete = () => {
+      if (successShownRef.current) return
+      successShownRef.current = true
+      setShowSuccess(true)
+    }
+    window.addEventListener('puzzle:complete', onComplete)
+    return () => window.removeEventListener('puzzle:complete', onComplete)
   }, [])
 
   const handleUndo = () => {

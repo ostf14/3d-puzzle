@@ -525,7 +525,7 @@ function Scene({ modelPath }: SceneProps) {
     const frag = frags.get(fragmentName)
     if (!frag || frag.neighbors.length === 0) return null
     
-    const SNAP_DISTANCE = 0.5
+    const SNAP_DISTANCE = 0.8
     const SNAP_ROTATION = 0.26 // ~15 degrees in radians
     
     // Check each neighbor
@@ -848,10 +848,13 @@ function Scene({ modelPath }: SceneProps) {
       setFragments(newFragments)
       setGroups(newGroups)
       
-      // Check if puzzle is complete
+      // Check if puzzle is complete. Dispatch a CustomEvent so the UI layer
+      // sees the completion in the same frame instead of waiting for the
+      // 100 ms window.isPuzzleComplete poll.
       if (checkPuzzleCompletion(newFragments)) {
         console.log('🎉 Puzzle completed!')
         setIsPuzzleComplete(true)
+        window.dispatchEvent(new CustomEvent('puzzle:complete'))
       }
       
       // Save to history after releasing piece
