@@ -37,6 +37,13 @@ function fibonacciSpherePoints(n: number, radius: number): THREE.Vector3[] {
   return points
 }
 
+// Module-level cache of each fragment's original GLB-authored pose. We
+// must capture this once and reuse it across Restart-key remounts —
+// fragmentObj.position gets mutated by scramble + drag, so reading it on
+// a remount would yield a stale scrambled position and the adjacency
+// map would collapse (no neighbours within 1.5 units → no snapping).
+const originalPoseCache = new Map<string, { pos: THREE.Vector3; rot: THREE.Euler }>()
+
 interface FragmentData {
   mesh: THREE.Mesh
   originalPosition: THREE.Vector3
@@ -338,10 +345,21 @@ function Scene({ modelPath }: SceneProps) {
     console.log('Fragment objects found:', fragmentObjects.length)
     
     fragmentObjects.forEach((fragmentObj: any) => {
-      // Get world position of the fragment object
-      const worldPos = new THREE.Vector3()
-      fragmentObj.getWorldPosition(worldPos)
-      
+      // Capture the GLB-authored pose ONCE, then always read from the cache.
+      // On Restart-key remounts fragmentObj.position is already the previous
+      // session's scrambled value, so a fresh getWorldPosition() would lie.
+      let cached = originalPoseCache.get(fragmentObj.name)
+      if (!cached) {
+        const wp = new THREE.Vector3()
+        fragmentObj.getWorldPosition(wp)
+        const wq = new THREE.Quaternion()
+        fragmentObj.getWorldQuaternion(wq)
+        const wr = new THREE.Euler().setFromQuaternion(wq)
+        cached = { pos: wp, rot: wr }
+        originalPoseCache.set(fragmentObj.name, cached)
+      }
+      const worldPos = cached.pos
+
       // Generate random position on sphere (radius 5)
       const theta = Math.random() * Math.PI * 2
       const phi = Math.acos(2 * Math.random() - 1)
@@ -367,24 +385,20 @@ function Scene({ modelPath }: SceneProps) {
       })
       
       if (meshChild) {
-        const worldQuat = new THREE.Quaternion()
-        fragmentObj.getWorldQuaternion(worldQuat)
-        const worldRot = new THREE.Euler()
-        worldRot.setFromQuaternion(worldQuat)
-        
-        // Calculate fragment size using bounding box
+        // Calculate fragment size using bounding box (translation-invariant,
+        // so the scrambled current position doesn't affect the result).
         const bbox = new THREE.Box3().setFromObject(fragmentObj)
         const size = bbox.getSize(new THREE.Vector3())
         const volume = size.x * size.y * size.z
-        
+
         console.log(`Fragment ${fragmentObj.name} size:`, size, 'volume:', volume.toFixed(4))
-        
+
         // Visibility is decided after this loop in the active-pass below.
 
         fragmentsMap.set(fragmentObj.name, {
           mesh: meshChild,
-          originalPosition: worldPos.clone(),
-          originalRotation: worldRot.clone(),
+          originalPosition: cached.pos.clone(),
+          originalRotation: cached.rot.clone(),
           currentPosition: scrambledPos.clone(),
           currentRotation: new THREE.Euler(0, 0, 0),
           targetPosition: scrambledPos.clone(),
