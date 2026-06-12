@@ -875,7 +875,14 @@ function Scene({ modelPath }: SceneProps) {
         frag.targetRotation.copy(snapResult.targetRotation)
         frag.lerpProgress = 0
         frag.isSnapped = true
-        
+
+        // Mark the neighbour as snapped too. On the very first snap of the
+        // puzzle the neighbour was still unsnapped, so without this line the
+        // anchor piece stayed at isSnapped=false forever — leaving the
+        // counter stuck at 10/11 even after assembling all 11 pieces.
+        const neighborFrag = newFragments.get(snapResult.neighborName)
+        if (neighborFrag) neighborFrag.isSnapped = true
+
         // Handle grouping
         const groupResult = handleGrouping(fragmentName, snapResult.neighborName, newFragments, newGroups)
         newFragments = groupResult.fragments
