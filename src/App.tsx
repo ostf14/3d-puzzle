@@ -49,6 +49,20 @@ function App() {
     }
   }
 
+  // Keyboard shortcuts: Ctrl/Cmd+Z for undo, Ctrl/Cmd+Shift+Z for redo.
+  // Underlying puzzleUndo/puzzleRedo no-op safely when at history bounds.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.ctrlKey || e.metaKey
+      if (!isMod || e.key.toLowerCase() !== 'z') return
+      e.preventDefault()
+      const fn = e.shiftKey ? (window as any).puzzleRedo : (window as any).puzzleUndo
+      if (typeof fn === 'function') fn()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       {showSuccess && <SuccessPopup onClose={() => setShowSuccess(false)} />}
