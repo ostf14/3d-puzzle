@@ -8,10 +8,10 @@ import { orbitControlsRef } from './App'
 // pieces by bbox volume. Anything below the cutoff stays hidden.
 const VISIBLE_FRAGMENT_COUNT = 13
 
-// How many snapped pieces declare the puzzle solved. With this < VISIBLE,
-// the player can ignore any single piece (e.g. the tiny ones that are hard
-// to track during scramble) and still complete the puzzle.
-const REQUIRED_SNAP_COUNT = 12
+// How many snapped pieces declare the puzzle solved. Equal to VISIBLE means
+// every piece must be placed — set lower if you want to allow a piece to be
+// ignored.
+const REQUIRED_SNAP_COUNT = 13
 
 // Radius of the scramble sphere — pieces are scattered on this surface.
 const SCRAMBLE_RADIUS = 5
