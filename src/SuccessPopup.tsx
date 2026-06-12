@@ -2,12 +2,21 @@ import React from 'react'
 
 interface SuccessPopupProps {
   onClose: () => void
+  elapsedSeconds: number
 }
 
 const CLOSE_DEFAULT_SHADOW = 'inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.05)'
 const CLOSE_PRESSED_SHADOW = 'inset 0 3px 6px rgba(0,0,0,0.6)'
 
-const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose }) => {
+const formatTime = (s: number) => {
+  const safe = Math.max(0, Math.floor(s))
+  const h = Math.floor(safe / 3600).toString().padStart(2, '0')
+  const m = Math.floor((safe % 3600) / 60).toString().padStart(2, '0')
+  const sec = (safe % 60).toString().padStart(2, '0')
+  return `${h}:${m}:${sec}`
+}
+
+const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose, elapsedSeconds }) => {
   return (
     <div style={{
       position: 'fixed',
@@ -110,6 +119,22 @@ const SuccessPopup: React.FC<SuccessPopupProps> = ({ onClose }) => {
         }}>
           You&rsquo;ve successfully reassembled the sculpture
         </p>
+
+        {/* Final time — frozen on puzzle:complete, same Doto + white-glow
+            treatment as the live dock timer, scaled up so it carries the
+            popup's "your score" beat. */}
+        <div style={{
+          fontFamily: '"Doto", sans-serif',
+          fontSize: '32px',
+          fontWeight: 700,
+          color: 'white',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+          marginTop: '28px',
+          textShadow: '0 0 8px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.3)',
+        }}>
+          {formatTime(elapsedSeconds)}
+        </div>
       </div>
 
       <style>{`

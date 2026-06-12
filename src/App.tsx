@@ -31,6 +31,9 @@ function App() {
   // because window.isPuzzleComplete stays true.
   const successShownRef = useRef(false)
   const timerIntervalRef = useRef<number | null>(null)
+  // Armed-but-not-yet-firing 'pointerdown' listener. Set on puzzle:ready,
+  // consumed by the first pointer event the player produces.
+  const pendingStartRef = useRef<(() => void) | null>(null)
 
   // Poll for undo/redo availability. Completion isn't polled anymore — it
   // arrives as a 'puzzle:complete' CustomEvent so the popup fires in the
@@ -59,29 +62,52 @@ function App() {
     return () => window.removeEventListener('puzzle:complete', onComplete)
   }, [])
 
-  // Timer: starts on 'puzzle:ready' (Scene init + any Restart), freezes on
-  // 'puzzle:complete'. Each ready event resets the counter to 0 so a
-  // restart starts a fresh run.
+  // Timer lifecycle:
+  //  • puzzle:ready  → reset to 0, arm a one-shot 'pointerdown' listener
+  //  • first pointerdown  → start the 1s interval, listener auto-removes
+  //  • puzzle:complete  → freeze the counter, drop any armed listener
+  //  • Restart fires a fresh puzzle:ready, so the whole cycle repeats
   useEffect(() => {
+    const dropPending = () => {
+      if (pendingStartRef.current) {
+        window.removeEventListener('pointerdown', pendingStartRef.current as EventListener)
+        pendingStartRef.current = null
+      }
+    }
+
     const onReady = () => {
       setElapsedSeconds(0)
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
-      timerIntervalRef.current = window.setInterval(() => {
-        setElapsedSeconds(s => s + 1)
-      }, 1000)
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      dropPending()
+      const startTimer = () => {
+        pendingStartRef.current = null
+        if (timerIntervalRef.current) return
+        timerIntervalRef.current = window.setInterval(() => {
+          setElapsedSeconds(s => s + 1)
+        }, 1000)
+      }
+      pendingStartRef.current = startTimer
+      window.addEventListener('pointerdown', startTimer, { once: true })
     }
+
     const onComplete = () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current)
         timerIntervalRef.current = null
       }
+      dropPending()
     }
+
     window.addEventListener('puzzle:ready', onReady)
     window.addEventListener('puzzle:complete', onComplete)
     return () => {
       window.removeEventListener('puzzle:ready', onReady)
       window.removeEventListener('puzzle:complete', onComplete)
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      dropPending()
     }
   }, [])
 
@@ -130,7 +156,7 @@ function App() {
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      {showSuccess && <SuccessPopup onClose={() => setShowSuccess(false)} />}
+      {showSuccess && <SuccessPopup onClose={() => setShowSuccess(false)} elapsedSeconds={elapsedSeconds} />}
 
       <InfoPanel />
 
