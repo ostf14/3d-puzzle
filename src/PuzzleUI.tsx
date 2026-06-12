@@ -161,8 +161,8 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
         >
           {/* Lucide "undo-2" icon, inlined */}
           <svg
-            width="22"
-            height="22"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -223,8 +223,8 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
         >
           {/* Lucide "redo-2" icon, inlined */}
           <svg
-            width="22"
-            height="22"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -261,8 +261,8 @@ const PuzzleUI: React.FC<PuzzleUIProps> = ({ onUndo, onRedo, canUndo, canRedo, o
       >
         {/* Lucide "search" icon, inlined to avoid pulling lucide-react */}
         <svg
-          width="22"
-          height="22"
+          width="15"
+          height="15"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
