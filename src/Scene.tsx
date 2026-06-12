@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -59,7 +59,40 @@ function Scene({ modelPath }: SceneProps) {
   const snapSound = useRef<HTMLAudioElement | null>(null)
   const targetOrbitCenter = useRef(new THREE.Vector3(0, 0, 0))
   const highlightTimerRef = useRef<number | null>(null)
-  const originalEmissiveRef = useRef<Map<THREE.Mesh, { color: THREE.Color; intensity: number }>>(new Map())
+  // Halo sprites attached to currently-highlighted fragments (one per piece).
+  const haloSpritesRef = useRef<Map<string, THREE.Sprite>>(new Map())
+
+  // Soft radial-gradient texture used by the halo sprites — built once via
+  // a <canvas>, no external assets needed. Gold core fading to warm orange.
+  const haloTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')!
+    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128)
+    g.addColorStop(0,    'rgba(255, 245, 220, 1)')
+    g.addColorStop(0.22, 'rgba(255, 215, 100, 0.65)')
+    g.addColorStop(0.55, 'rgba(255, 170, 50, 0.18)')
+    g.addColorStop(1,    'rgba(255, 140, 0, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 256, 256)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [])
+
+  // Dispose the texture and any leftover sprites when the scene unmounts.
+  useEffect(() => {
+    const sprites = haloSpritesRef.current
+    return () => {
+      sprites.forEach(s => {
+        s.parent?.remove(s)
+        s.material.dispose()
+      })
+      sprites.clear()
+      haloTexture.dispose()
+    }
+  }, [haloTexture])
   
   // Volume threshold - fragments smaller than this are considered insignificant
   const VOLUME_THRESHOLD = 0.001 // Lowered to include more fragments
@@ -96,53 +129,58 @@ function Scene({ modelPath }: SceneProps) {
     }, 3000)
   }, [fragments, groups])
 
-  // Apply highlight effect to unsnapped fragments
+  // Attach/remove a glowing halo sprite per single (ungrouped) piece while
+  // highlight is active. Sprites live as children of each fragment Object3D,
+  // so they inherit position and follow the piece when dragged.
   useEffect(() => {
-    gltf.scene.traverse((child: any) => {
-      if (child instanceof THREE.Mesh && child.material) {
-        // Store original emissive values on first encounter
-        if (!originalEmissiveRef.current.has(child)) {
-          originalEmissiveRef.current.set(child, {
-            color: child.material.emissive ? child.material.emissive.clone() : new THREE.Color(0x000000),
-            intensity: child.material.emissiveIntensity || 0
-          })
+    const sprites = haloSpritesRef.current
+
+    fragments.forEach((fragment, name) => {
+      // A piece counts as "single" if it has no group, or its group has
+      // exactly one member (itself).
+      let isSinglePiece = false
+      if (!fragment.groupId) {
+        isSinglePiece = true
+      } else {
+        const group = groups.get(fragment.groupId)
+        isSinglePiece = group ? group.members.size === 1 : true
+      }
+
+      const shouldHighlight = isSinglePiece && highlightActive
+      const existing = sprites.get(name)
+
+      if (shouldHighlight && !existing) {
+        const material = new THREE.SpriteMaterial({
+          map: haloTexture,
+          color: 0xFFD700,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          depthTest: false, // halo shines through the piece itself
+          opacity: 0.95,
+        })
+        const sprite = new THREE.Sprite(material)
+        // Scale halo to ~2x the piece's bounding box so the glow visibly
+        // extends past the silhouette. Clamp so very tiny pieces still
+        // produce a visible aura and very large pieces don't dominate.
+        const fragmentObj = gltf.scene.children.find((c: any) => c.name === name)
+        if (fragmentObj) {
+          const bbox = new THREE.Box3().setFromObject(fragmentObj)
+          const size = bbox.getSize(new THREE.Vector3())
+          const maxDim = Math.max(size.x, size.y, size.z)
+          const scale = Math.min(Math.max(maxDim * 2.2, 0.6), 2.5)
+          sprite.scale.setScalar(scale)
+          sprite.renderOrder = 999 // draw after the model
+          fragmentObj.add(sprite)
+          sprites.set(name, sprite)
         }
-        
-        const fragmentName = Array.from(fragments.entries()).find(([_, frag]) => frag.mesh === child)?.[0]
-        if (fragmentName) {
-          const fragment = fragments.get(fragmentName)
-          // Only highlight single pieces (not in any group)
-          // A piece is single if it has no groupId OR its group has only 1 member
-          let isSinglePiece = false
-          if (fragment) {
-            if (!fragment.groupId) {
-              // No group at all - definitely single
-              isSinglePiece = true
-            } else {
-              // Has a group - check if group has only 1 member
-              const group = groups.get(fragment.groupId)
-              isSinglePiece = group ? group.members.size === 1 : true
-            }
-          }
-          
-          const shouldHighlight = fragment && isSinglePiece && highlightActive
-          
-          if (shouldHighlight) {
-            // Add golden emissive glow
-            child.material.emissive = new THREE.Color(0xFFD700) // Gold
-            child.material.emissiveIntensity = 0.5
-          } else {
-            // Restore original emissive
-            const original = originalEmissiveRef.current.get(child)
-            if (original) {
-              child.material.emissive = original.color.clone()
-              child.material.emissiveIntensity = original.intensity
-            }
-          }
-        }
+      } else if (!shouldHighlight && existing) {
+        existing.parent?.remove(existing)
+        existing.material.dispose()
+        sprites.delete(name)
       }
     })
-  }, [highlightActive, fragments, gltf.scene])
+  }, [highlightActive, fragments, groups, gltf.scene, haloTexture])
 
   // Configure materials from Blender
   useEffect(() => {
