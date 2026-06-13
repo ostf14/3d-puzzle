@@ -4,7 +4,7 @@ Reassemble a fragmented 18th-century sculpture in your browser.
 
 **Live demo:** https://3d-puzzle-sigma.vercel.app/
 
-<video src="demo.mp4" controls width="700"></video>
+<video src="https://github.com/user-attachments/assets/bae63575-bcbc-45cc-a262-1c34cc592f1f" controls width="700"></video>
 
 A web-based 3D puzzle built around a photogrammetry scan of Äskulap (Asclepius), a marble sculpture by Veit Königer (c. 1776) from the Great Parterre of Schönbrunn Palace, Vienna. The statue is sliced in Blender into 11 fragments, scattered across a Fibonacci sphere, and reassembled by the player through drag-and-drop with magnetic snapping. An info panel provides museum metadata and provenance sourced from the Schönbrunn eMuseum collection.
 
