@@ -188,17 +188,6 @@ function Scene({ modelPath }: SceneProps) {
       (s.material as THREE.SpriteMaterial).opacity = HALO_FULL_OPACITY
     })
 
-    // Debug: log current state
-    console.log('=== HIGHLIGHT ACTIVATED ===')
-    console.log('Total fragments:', fragments.size)
-    console.log('Total groups:', groups.size)
-    fragments.forEach((frag, name) => {
-      console.log(`${name}: groupId=${frag.groupId}, isSnapped=${frag.isSnapped}`)
-    })
-    groups.forEach((group, id) => {
-      console.log(`Group ${id}: members=${Array.from(group.members).join(', ')}`)
-    })
-
     // Search only rescues SINGLES — pieces that have no group at all. Any
     // existing group (large main assembly, small accidental orphan pair,
     // etc.) is left alone so we never rip apart something the player
@@ -301,36 +290,24 @@ function Scene({ modelPath }: SceneProps) {
     })
   }, [highlightActive, fragments, groups, gltf.scene, haloTexture])
 
-  // Configure materials from Blender
+  // Configure materials from Blender — bump the Gold_Inner inner-surface
+  // material's metalness/roughness so the gold seam reads correctly under
+  // the scene lighting.
   useEffect(() => {
-    console.log('=== GLB LOADED ===')
-    console.log('All children:', gltf.scene.children)
-    console.log('Children names:', gltf.scene.children.map((c: any) => c.name))
-    
-    const fragments = gltf.scene.children.filter((child: any) => 
+    const fragments = gltf.scene.children.filter((child: any) =>
       child.name && child.name.includes('Fragment')
     )
-    console.log('Found fragments:', fragments.length)
-    console.log('Fragment names:', fragments.map((f: any) => f.name))
-    
-    // Configure materials assigned by Blender
     fragments.forEach((fragment: any) => {
       fragment.traverse((child: any) => {
         if (child.isMesh && child.material) {
-          console.log('Material found:', child.material.name)
-          
-          // If Blender assigned Gold_Inner material, enhance it
           if (child.material.name === 'Gold_Inner') {
             child.material.metalness = 1.0
             child.material.roughness = 0.3
             child.material.needsUpdate = true
-            console.log('Gold_Inner material enhanced')
           }
         }
       })
     })
-    
-    console.log('Materials configured from Blender')
   }, [gltf])
 
   // Initialize fragments on mount
@@ -341,9 +318,7 @@ function Scene({ modelPath }: SceneProps) {
     const fragmentObjects = gltf.scene.children.filter((child: any) => 
       child.name && child.name.includes('Fragment')
     )
-    
-    console.log('Fragment objects found:', fragmentObjects.length)
-    
+
     fragmentObjects.forEach((fragmentObj: any) => {
       // Capture the GLB-authored pose ONCE, then always read from the cache.
       // On Restart-key remounts fragmentObj.position is already the previous
@@ -370,8 +345,6 @@ function Scene({ modelPath }: SceneProps) {
         radius * Math.cos(phi)
       )
       
-      console.log(`Fragment ${fragmentObj.name}: moving to [${scrambledPos.x.toFixed(2)}, ${scrambledPos.y.toFixed(2)}, ${scrambledPos.z.toFixed(2)}]`)
-      
       // Set initial scrambled position
       fragmentObj.position.copy(scrambledPos)
       
@@ -389,8 +362,6 @@ function Scene({ modelPath }: SceneProps) {
         const bbox = new THREE.Box3().setFromObject(fragmentObj)
         const size = bbox.getSize(new THREE.Vector3())
         const volume = size.x * size.y * size.z
-
-        console.log(`Fragment ${fragmentObj.name} size:`, size, 'volume:', volume.toFixed(4))
 
         // Visibility is decided after this loop in the active-pass below.
 
@@ -425,7 +396,6 @@ function Scene({ modelPath }: SceneProps) {
         if (fragmentObj) fragmentObj.visible = false
       }
     })
-    console.log(`Active fragments: ${Math.min(VISIBLE_FRAGMENT_COUNT, fragmentsMap.size)} of ${fragmentsMap.size}, need ${REQUIRED_SNAP_COUNT} to win`)
 
     // Re-scramble active pieces onto an evenly-spaced Fibonacci sphere so
     // no two pieces can overlap or hide behind each other. Random rotation
@@ -472,10 +442,8 @@ function Scene({ modelPath }: SceneProps) {
       })
       
       fragA.neighbors = neighbors
-      console.log(`Fragment ${nameA} has ${neighbors.length} neighbors:`, neighbors)
     })
-    
-    console.log('Scramble complete! Total fragments:', fragmentsMap.size)
+
     setFragments(fragmentsMap)
 
     // Signal the UI layer that a fresh game is ready — App uses this to
@@ -671,9 +639,7 @@ function Scene({ modelPath }: SceneProps) {
       newFrag.groupId = groupId
       newNeighbor.groupId = groupId
     }
-    
-    console.log(`Group created/updated. Fragment ${fragmentName} groupId:`, newFrag.groupId, 'Members:', newGroups.get(newFrag.groupId!)?.members)
-    
+
     return { fragments: newFragments, groups: newGroups }
   }
 
@@ -733,9 +699,7 @@ function Scene({ modelPath }: SceneProps) {
       const intersection = new THREE.Vector3()
       raycaster.current.ray.intersectPlane(dragPlane.current, intersection)
       dragOffset.current.copy(actualPosition).sub(intersection)
-      
-      console.log(`Starting drag of ${fragmentName}, groupId: ${fragment.groupId}, actualPos:`, actualPosition)
-      
+
       // Update fragment state
       setFragments(prev => {
         const next = new Map(prev)
@@ -849,8 +813,6 @@ function Scene({ modelPath }: SceneProps) {
       if (frag.isActive && frag.isSnapped) activeSnapped++
     })
 
-    console.log(`Puzzle completion: ${activeSnapped}/${REQUIRED_SNAP_COUNT} snapped`)
-
     return activeSnapped >= REQUIRED_SNAP_COUNT
   }, [])
 
@@ -905,19 +867,8 @@ function Scene({ modelPath }: SceneProps) {
           if (snappedFrag.groupId === largestId) {
             const groupCenter = calculateGroupCenter(snappedFrag.groupId, newFragments, newGroups)
             targetOrbitCenter.current.copy(groupCenter)
-            console.log(`Updating orbit center to main-group center:`, groupCenter)
-          } else {
-            console.log(`Skipping orbit update — snap formed an orphan group of ${largestSize >= 2 ? '<' + largestSize : '2'}`)
           }
         }
-        
-        // Play snap sound (temporarily muted)
-        // if (snapSound.current) {
-        //   snapSound.current.currentTime = 0
-        //   snapSound.current.play().catch(() => {}) // Ignore audio errors
-        // }
-
-        console.log(`Fragment ${fragmentName} snapped to ${snapResult.neighborName}`)
       } else {
         // No snap - just set target to current position
         frag.targetPosition.copy(frag.currentPosition)
@@ -931,7 +882,6 @@ function Scene({ modelPath }: SceneProps) {
       // sees the completion in the same frame instead of waiting for the
       // 100 ms window.isPuzzleComplete poll.
       if (checkPuzzleCompletion(newFragments)) {
-        console.log('🎉 Puzzle completed!')
         setIsPuzzleComplete(true)
         window.dispatchEvent(new CustomEvent('puzzle:complete'))
       }
@@ -1106,19 +1056,6 @@ function Scene({ modelPath }: SceneProps) {
       {/* Lighting for shader material */}
       <ambientLight intensity={0.4} />
       <directionalLight position={[5, 5, 5]} intensity={0.8} />
-      
-      {/* Gold dust particle effects - temporarily disabled */}
-      {/* {particleEffects.map(effect => (
-        <GoldDustParticles
-          key={effect.id}
-          position={effect.position}
-          neighborPosition={effect.neighborPosition}
-          active={effect.active}
-          onComplete={() => {
-            setParticleEffects(prev => prev.filter(e => e.id !== effect.id))
-          }}
-        />
-      ))} */}
     </>
   )
 }

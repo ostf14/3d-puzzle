@@ -5,3 +5,12 @@ dist/
 .DS_Store
 .vercel/
 .env*
+Thumbs.db
+*.log
+npm-debug.log*
+.idea/
+.vscode/
+*.tmp
+*.swp
+.claude/
+coverage/

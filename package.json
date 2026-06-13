@@ -1,7 +1,13 @@
 {
-  "name": "3d-puzzle-game",
+  "name": "3d-museum-puzzle",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Drag-and-drop 3D puzzle — reassemble Veit Königer's Äskulap sculpture from Schönbrunn Palace. Built with React Three Fiber.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ostf14/3d-puzzle"
+  },
+  "homepage": "https://3d-puzzle-sigma.vercel.app/",
   "type": "module",
   "scripts": {
     "dev": "vite",

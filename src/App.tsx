@@ -6,16 +6,12 @@ import PuzzleUI from './PuzzleUI'
 import SuccessPopup from './SuccessPopup'
 import LoadingOverlay from './LoadingOverlay'
 import InfoPanel from './InfoPanel'
-// import ModelSelector from './ModelSelector' // re-enable when restoring the selector flow
 import * as THREE from 'three'
 
 // Global ref for OrbitControls to enable dynamic target updates
 export const orbitControlsRef: { current: any } = { current: null }
 
 function App() {
-  // ModelSelector temporarily bypassed — always load Asklepios on start.
-  // To restore the selector: switch type back to `string | null` with initial null,
-  // re-import ModelSelector, and re-add the `if (!selectedModel) return <ModelSelector .../>` branch.
   const [selectedModel] = useState<string>('/models/Test_object.glb')
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)

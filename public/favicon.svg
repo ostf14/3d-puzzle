@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Minimal Greek column silhouette, white on transparent. -->
+  <g fill="#ffffff">
+    <!-- Capital -->
+    <rect x="6" y="5" width="20" height="2.5" rx="0.5"/>
+    <rect x="8" y="7.5" width="16" height="1.5"/>
+    <!-- Shaft with three vertical flutes implied by gaps -->
+    <rect x="10" y="9" width="2" height="16"/>
+    <rect x="14" y="9" width="2" height="16"/>
+    <rect x="18" y="9" width="2" height="16"/>
+    <rect x="22" y="9" width="2" height="16" opacity="0.85"/>
+    <!-- Base -->
+    <rect x="8" y="25" width="16" height="1.5"/>
+    <rect x="6" y="26.5" width="20" height="2.5" rx="0.5"/>
+  </g>
+</svg>
