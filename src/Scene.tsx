@@ -888,12 +888,27 @@ function Scene({ modelPath }: SceneProps) {
         newFragments = groupResult.fragments
         newGroups = groupResult.groups
         
-        // Update orbit center to the newly formed/merged group
+        // Update orbit center to the newly formed/merged group — but only
+        // when it's the LARGEST group (i.e. the main assembly). Otherwise
+        // two stray pieces snapping to each other would yank the camera
+        // off the main statue, which feels like the controls broke.
         const snappedFrag = newFragments.get(fragmentName)
         if (snappedFrag && snappedFrag.groupId) {
-          const groupCenter = calculateGroupCenter(snappedFrag.groupId, newFragments, newGroups)
-          targetOrbitCenter.current.copy(groupCenter)
-          console.log(`Updating orbit center to group center:`, groupCenter)
+          let largestId: string | null = null
+          let largestSize = 0
+          newGroups.forEach((g, id) => {
+            if (g.members.size > largestSize) {
+              largestSize = g.members.size
+              largestId = id
+            }
+          })
+          if (snappedFrag.groupId === largestId) {
+            const groupCenter = calculateGroupCenter(snappedFrag.groupId, newFragments, newGroups)
+            targetOrbitCenter.current.copy(groupCenter)
+            console.log(`Updating orbit center to main-group center:`, groupCenter)
+          } else {
+            console.log(`Skipping orbit update — snap formed an orphan group of ${largestSize >= 2 ? '<' + largestSize : '2'}`)
+          }
         }
         
         // Play snap sound (temporarily muted)
